@@ -1,6 +1,31 @@
 # Enterprise Polyglot DevSecOps Reference Platform
 
-A production-grade, zero-trust reference architecture demonstrating defense-in-depth across 7 polyglot microservices (Go, Python, Node.js, Ruby, Java, C#, Rust).
+[![DevSecOps Phase 2: Static Verification Gates](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/security-gates.yml/badge.svg)](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/security-gates.yml)
+[![DevSecOps Phase 3: Build, Sign, and Publish Artifacts](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/build-sign-publish.yml/badge.svg)](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/build-sign-publish.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Template: GitHub](https://img.shields.io/badge/Template-GitHub%20Template-success.svg)](https://github.com/jason-victor1/enterprise-devsecops-platform)
+
+A production-grade, zero-trust reference architecture demonstrating defense-in-depth across 7 polyglot microservices (Go, Python, Node.js, Ruby, Java, C#, PHP).
+
+```mermaid
+flowchart TD
+    subgraph TrackA["Track A: CI/CD Build & Supply Chain Gates"]
+        Code[Polyglot Source Code] --> SAST[Semgrep AST & Gitleaks]
+        SAST --> Posture[Checkov Dockerfile Posture]
+        Posture --> Build[Multi-arch Container Build]
+        Build --> Syft[Syft SBOM SPDX & CycloneDX]
+        Syft --> Cosign[Cosign Keyless OIDC Signing]
+        Cosign --> GHCR[(GitHub Container Registry)]
+    end
+
+    subgraph TrackB["Track B: Kubernetes Runtime & Zero-Trust Gates"]
+        GHCR --> Kyverno[Kyverno Admission Controller]
+        Kyverno -->|Verify Cosign Signature| K8s[Kind Kubernetes Cluster]
+        Vault[HashiCorp Vault Agent] -.->|In-Memory Dynamic Tokens| K8s
+        NetPol[Default-Deny NetworkPolicies] --> K8s
+        K8s --> eBPF[Falco Modern eBPF Syscall Monitor]
+    end
+```
 
 ## Security Architecture & Defensive Gates
 

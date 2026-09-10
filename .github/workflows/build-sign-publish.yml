@@ -3,6 +3,12 @@ name: "DevSecOps Phase 3: Build, Sign, and Publish Artifacts"
 on:
   push:
     branches: ["main"]
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".checkov.yml"
+      - ".pre-commit-config.yaml"
+
     tags: ["v*"]
 
 permissions:
