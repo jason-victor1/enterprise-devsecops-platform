@@ -1,0 +1,5 @@
+framework:
+  - dockerfile
+  - secrets
+skip-check:
+  - CKV_DOCKER_2 # Health monitoring is delegated to Kubernetes liveness/readiness probes; distroless images intentionally omit shell binaries
