@@ -5,7 +5,7 @@ echo ">>> [VAULT] Installing HashiCorp Vault Helm Chart with PSS-Restricted Comp
 helm repo add hashicorp https://helm.releases.hashicorp.com
 helm repo update
 
-helm install vault hashicorp/vault \
+helm upgrade --install vault hashicorp/vault \
   --namespace vault \
   --create-namespace \
   --set "server.dev.enabled=true" \

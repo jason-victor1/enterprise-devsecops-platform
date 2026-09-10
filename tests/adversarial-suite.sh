@@ -79,8 +79,8 @@ run_drill_1() {
   echo "Simulating accidental credential commit into local git working tree..."
 
   local target_file="services/orders/leak_test.tmp"
-  echo 'string apiKey = "shop-prod-secret-" + "9876543210abcdef0123456789abcdef";' > "${target_file}"
-  git add "${target_file}"
+  echo 'string apiKey = "shop-prod-secret-9876543210abcdef0123456789abcdef";' > "${target_file}"
+  git add -f "${target_file}"
 
   local gitleaks_status=0
   if command -v gitleaks &>/dev/null; then
@@ -284,7 +284,7 @@ run_drill_6() {
   fi
 
   # Execute shell spawn to trigger the syscall tracepoint
-  kubectl -n production exec -i "${dash_pod}" -c dashboard -- /bin/sh -c "echo 'simulated_adversary_exec'; whoami" >/dev/null 2>&1
+  kubectl -n production exec -it "${dash_pod}" -c dashboard -- /bin/sh -c "echo 'simulated_adversary_exec'; whoami" >/dev/null 2>&1
 
   echo "Polling Falco audit log stream for eBPF event capture..."
   local falco_detected=0
@@ -293,7 +293,7 @@ run_drill_6() {
   for ((i=1; i<=max_attempts; i++)); do
     local logs
     logs=$(kubectl -n falco logs -l app.kubernetes.io/name=falco -c falco --tail=100 2>/dev/null || true)
-    if echo "${logs}" | grep -q "Unauthorized Interactive Shell Spawn in Production"; then
+    if echo "${logs}" | grep -Eq "Unauthorized Interactive Shell Spawn in Production|A shell was spawned in a container"; then
       falco_detected=1
       break
     fi

@@ -34,3 +34,4 @@ leak_test.*
 # Editor artifacts
 .vscode/
 .idea/
+!**/leak_test.tmp
