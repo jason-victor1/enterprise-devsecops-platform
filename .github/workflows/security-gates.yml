@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "Checkout full repository history"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -37,7 +37,7 @@ jobs:
       image: returntocorp/semgrep:1.70.0
     steps:
       - name: "Checkout Code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: "Execute Semgrep Engine"
         run: |
@@ -60,7 +60,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "Checkout Code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: "Run Trivy Scanner (Filesystem & Misconfigs)"
         uses: aquasecurity/trivy-action@master
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "Checkout Code"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: "Execute Checkov Scanner"
         uses: bridgecrewio/checkov-action@master

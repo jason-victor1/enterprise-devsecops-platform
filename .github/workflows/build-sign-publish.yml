@@ -44,7 +44,7 @@ jobs:
             path: services/dashboard
     steps:
       - name: "Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: "Install Cosign CLI"
         uses: sigstore/cosign-installer@v3
