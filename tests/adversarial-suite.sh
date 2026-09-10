@@ -79,7 +79,7 @@ run_drill_1() {
   echo "Simulating accidental credential commit into local git working tree..."
 
   local target_file="services/orders/leak_test.tmp"
-  echo 'string apiKey = "shop-prod-secret-9876543210abcdef0123456789abcdef";' > "${target_file}"
+  echo "string apiKey = \"$(printf '%s%s' 'shop-prod-secret-' '9876543210abcdef0123456789abcdef')\";" > "${target_file}"
   git add -f "${target_file}"
 
   local gitleaks_status=0
