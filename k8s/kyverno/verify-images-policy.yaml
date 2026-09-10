@@ -1,0 +1,37 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: check-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify Cosign Static Key Signatures
+    policies.kyverno.io/category: Software Supply Chain
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Enforce
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-polyglot-signatures
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - production
+      verifyImages:
+        - imageReferences:
+            - "enterprise/*:*"
+            - "ghcr.io/*:*"
+            - "*catalog*:*"
+          mutateDigest: false
+          verifyDigest: false
+          required: true
+          attestors:
+            - entries:
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETqZjiO7o5OR0VtjoHFDAiXvCOz0/
+                      cZg2xHASAlgqjMrf4TkzjRQWThup8n888cM0DBcgfH8J9WBZurZ9PfPS+g==
+                      -----END PUBLIC KEY-----

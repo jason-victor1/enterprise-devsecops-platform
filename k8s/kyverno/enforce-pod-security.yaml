@@ -1,0 +1,41 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-pod-hardening
+  annotations:
+    policies.kyverno.io/title: Enforce Pod Security Standards Restricted
+    policies.kyverno.io/category: Pod Security Standards
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Ensures all workloads running in the production namespace enforce
+      read-only root filesystems, drop all kernel capabilities, disallow
+      privilege escalation, and run as an explicit non-root user.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-runtime-security-contexts
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - production
+      validate:
+        message: >-
+          HARDENING VIOLATION: Containers must enforce runAsNonRoot=true,
+          readOnlyRootFilesystem=true, allowPrivilegeEscalation=false,
+          and drop ALL capabilities.
+        pattern:
+          spec:
+            =(securityContext):
+              runAsNonRoot: true
+            containers:
+              - securityContext:
+                  readOnlyRootFilesystem: true
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL

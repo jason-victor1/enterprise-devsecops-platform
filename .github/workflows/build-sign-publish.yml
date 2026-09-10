@@ -1,0 +1,106 @@
+name: "DevSecOps Phase 3: Build, Sign, and Publish Artifacts"
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-sign:
+    name: "Build, Attest & Sign Microservices"
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: catalog
+            path: services/catalog
+          - name: inventory
+            path: services/inventory
+          - name: orders
+            path: services/orders
+          - name: payment
+            path: services/payment
+          - name: notification
+            path: services/notification
+          - name: analytics
+            path: services/analytics
+          - name: dashboard
+            path: services/dashboard
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+
+      - name: "Install Cosign CLI"
+        uses: sigstore/cosign-installer@4959ce089c160999a6aff320ec94d50690157976 # v3.8.1
+
+      - name: "Install Syft CLI"
+        uses: anchore/sbom-action/download-syft@f325610c99d672d45b50029d519ff7e6085d3279 # v0.15.11
+
+      - name: "Set up Docker Buildx"
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fbcc24ea419b643c9de # v3.2.0
+
+      - name: "Authenticate to GitHub Container Registry (GHCR)"
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Construct Standardized Image Reference"
+        id: meta
+        run: |
+          IMAGE_URI="ghcr.io/${{ github.repository_owner }}/polyglot-${{ matrix.service.name }}"
+          IMAGE_URI=$(echo "${IMAGE_URI}" | tr '[:upper:]' '[:lower:]')
+          echo "image=${IMAGE_URI}" >> $GITHUB_OUTPUT
+          echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: "Build and Push Hardened Container Image"
+        id: build-push
+        uses: docker/build-push-action@2eb120fa8221804b4d63be5f5f745a3068e3d23e # v6.0.0
+        with:
+          context: ${{ matrix.service.path }}
+          file: ${{ matrix.service.path }}/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.image }}:latest
+
+      - name: "Generate SBOMs (CycloneDX & SPDX)"
+        run: |
+          TARGET="${{ steps.meta.outputs.image }}@${{ steps.build-push.outputs.digest }}"
+          syft "${TARGET}" -o cyclonedx-json=sbom-${{ matrix.service.name }}.cyclonedx.json
+          syft "${TARGET}" -o spdx-json=sbom-${{ matrix.service.name }}.spdx.json
+
+      - name: "Sign Container Image (Keyless via OIDC)"
+        run: |
+          cosign sign --yes \
+            "${{ steps.meta.outputs.image }}@${{ steps.build-push.outputs.digest }}"
+
+      - name: "Attest CycloneDX SBOM to Image (Keyless)"
+        run: |
+          cosign attest --yes \
+            --type cyclonedx \
+            --predicate sbom-${{ matrix.service.name }}.cyclonedx.json \
+            "${{ steps.meta.outputs.image }}@${{ steps.build-push.outputs.digest }}"
+
+      - name: "Verify Keyless Signature and In-Toto Attestation"
+        run: |
+          cosign verify \
+            --certificate-identity-regexp="https://github.com/${{ github.repository_owner }}/" \
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+            "${{ steps.meta.outputs.image }}@${{ steps.build-push.outputs.digest }}"
+
+          cosign verify-attestation \
+            --type cyclonedx \
+            --certificate-identity-regexp="https://github.com/${{ github.repository_owner }}/" \
+            --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+            "${{ steps.meta.outputs.image }}@${{ steps.build-push.outputs.digest }}"

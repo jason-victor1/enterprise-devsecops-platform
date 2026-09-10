@@ -1,0 +1,40 @@
+- rule: Unauthorized Interactive Shell Spawn in Production
+  desc: Detects an interactive shell (/bin/sh, /bin/bash, /bin/zsh) spawned inside any container within the production namespace.
+  condition: >
+    spawned_process and
+    k8s.ns.name = "production" and
+    proc.name in (sh, bash, zsh, ksh, csh, dash)
+  output: >
+    CRITICAL: Interactive shell spawned in production workload
+    (user=%user.name user_id=%user.uid container_id=%container.id container_name=%k8s.pod.name
+    namespace=%k8s.ns.name command=%proc.cmdline exe=%proc.exe parent=%proc.pname)
+  priority: CRITICAL
+  tags: [container, shell, mitre_execution, devsecops]
+
+- rule: Unauthorized External Egress from Financial Core
+  desc: Detects outbound network egress from payment or orders services targeting IP destinations outside local subnet boundaries.
+  condition: >
+    outbound and
+    k8s.ns.name = "production" and
+    k8s.pod.label.app in ("payment", "orders") and
+    not (fd.sip in ("10.96.0.0/12", "10.244.0.0/16", "127.0.0.1", "172.18.0.0/16"))
+  output: >
+    CRITICAL: Unauthorized network egress attempt detected from sensitive service
+    (pod=%k8s.pod.name app=%k8s.pod.label.app src_ip=%fd.cip src_port=%fd.cport
+    dst_ip=%fd.sip dst_port=%fd.sport proto=%fd.l4proto command=%proc.cmdline)
+  priority: CRITICAL
+  tags: [network, egress, mitre_exfiltration, pci_dss]
+
+- rule: Sensitive Process Environment Snooping
+  desc: Detects unauthorized attempts to read environment variables via /proc/*/environ, which can expose memory-resident secrets.
+  condition: >
+    open_read and
+    k8s.ns.name = "production" and
+    fd.name glob "/proc/*/environ" and
+    not proc.name in (pause, systemd, containerd)
+  output: >
+    WARNING: Attempted read of /proc/*/environ in container
+    (user=%user.name user_id=%user.uid pod=%k8s.pod.name process=%proc.name
+    command=%proc.cmdline target_file=%fd.name)
+  priority: WARNING
+  tags: [filesystem, credential_access, mitre_discovery]

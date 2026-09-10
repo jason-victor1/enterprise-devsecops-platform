@@ -1,0 +1,36 @@
+
+# Cosign private keys and SBOM artifacts
+*.key
+cosign.password
+*.spdx.json
+*.cdx.json
+
+# OS & Editor artifacts
+.DS_Store
+.vscode/
+.idea/
+
+# Local DevSecOps ephemeral keys & test dumps
+*.key
+*.tmp
+*.log
+cosign.key
+leak_test.*
+
+# Python / Node local runtimes
+__pycache__/
+*.pyc
+node_modules/
+
+# Cryptographic and sensitive key material
+*.key
+*.pem
+!cosign.pub
+leak_test.*
+
+# OS metadata
+.DS_Store
+
+# Editor artifacts
+.vscode/
+.idea/

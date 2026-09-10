@@ -1,0 +1,43 @@
+title = "Enterprise Polyglot Microservices Secret Detection Policy"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "enterprise-api-key"
+description = "Detected an internal high-privilege service authorization key"
+regex = '''(?i)(?:shop|ent|api)[_-]?(?:key|token|secret)[_-]?(?:prod|live)?\s*[:=]\s*['"][0-9a-zA-Z]{32,64}['"]'''
+secretGroup = 0
+keywords = ["shop_key", "ent_token", "api_secret", "prod_token"]
+
+[[rules]]
+id = "internal-jwt-signing-secret"
+description = "Detected hardcoded symmetric HMAC signing secret for JWTs"
+regex = '''(?i)(?:jwt|signing)[_-]?(?:secret|key)\s*[:=]\s*['"][a-zA-Z0-9!@#$%^&*()_+\-=]{24,128}['"]'''
+secretGroup = 0
+keywords = ["jwt_secret", "signing_key"]
+
+[[rules]]
+id = "database-uri-plaintext-password"
+description = "Detected embedded password credentials inside standard database URI schemes"
+regex = '''(?i)(?:postgres|postgresql|mysql|mongodb|redis):\/\/[a-zA-Z0-9_\-\.]+:[a-zA-Z0-9!#$%^&*()_+=\[\]{}~`-]{8,}@[a-zA-Z0-9_\-\.]+(?::[0-9]{1,5})?\/[a-zA-Z0-9_\-\.]+'''
+secretGroup = 0
+keywords = ["postgres://", "mysql://", "mongodb://", "redis://"]
+
+[allowlist]
+description = "Global exception allowlist for development fixtures"
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''\.git/''',
+  '''\.md$''',
+  '''k8s/vault/setup-vault\.sh$'''
+]
+regexes = [
+  '''MOCK_VALUE_EXEMPT_FROM_SCANNING'''
+]
+
+[[rules]]
+id = "enterprise-api-key"
+description = "Enterprise high-entropy API key pattern"
+regex = '''shop-prod-secret-[a-f0-9]{32}'''
+keywords = ["shop-prod-secret"]

@@ -1,0 +1,215 @@
+networks:
+  frontend-net:
+    driver: bridge
+    internal: false
+  orders-net:
+    driver: bridge
+    internal: true
+  payment-net:
+    driver: bridge
+    internal: true
+  analytics-net:
+    driver: bridge
+    internal: true
+
+services:
+  catalog:
+    build:
+      context: ./services/catalog
+      dockerfile: Dockerfile
+    image: enterprise/catalog:1.0.0
+    container_name: catalog-srv
+    user: "65532:65532"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    networks:
+      - frontend-net
+      - orders-net
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "/app/catalog", "-health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+    restart: unless-stopped
+
+  inventory:
+    build:
+      context: ./services/inventory
+      dockerfile: Dockerfile
+    image: enterprise/inventory:1.0.0
+    container_name: inventory-srv
+    user: "65532:65532"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    networks:
+      - orders-net
+    expose:
+      - "8081"
+    healthcheck:
+      test: ["CMD", "/nodejs/bin/node", "server.js", "--health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+    restart: unless-stopped
+
+  orders:
+    build:
+      context: ./services/orders
+      dockerfile: Dockerfile
+    image: enterprise/orders:1.0.0
+    container_name: orders-srv
+    user: "65532:65532"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    environment:
+      - CATALOG_SERVICE_URL=http://catalog:8080
+      - INVENTORY_SERVICE_URL=http://inventory:8081
+      - PAYMENT_SERVICE_URL=http://payment:8083
+    networks:
+      - frontend-net
+      - orders-net
+      - analytics-net
+    expose:
+      - "8082"
+    healthcheck:
+      test: ["CMD", "dotnet", "Orders.dll", "--health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+    restart: unless-stopped
+
+  payment:
+    build:
+      context: ./services/payment
+      dockerfile: Dockerfile
+    image: enterprise/payment:1.0.0
+    container_name: payment-srv
+    user: "65532:65532"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    environment:
+      - NOTIFICATION_SERVICE_URL=http://notification:8084
+    networks:
+      - orders-net
+      - payment-net
+      - analytics-net
+    expose:
+      - "8083"
+    healthcheck:
+      test: ["CMD", "/usr/bin/java", "-cp", "/app", "services.payment.src.PaymentServer", "--health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+    restart: unless-stopped
+
+  notification:
+    build:
+      context: ./services/notification
+      dockerfile: Dockerfile
+    image: enterprise/notification:1.0.0
+    container_name: notification-srv
+    user: "65532:65532"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    networks:
+      - payment-net
+    expose:
+      - "8084"
+    healthcheck:
+      test: ["CMD", "ruby", "server.rb", "--health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+    restart: unless-stopped
+
+  analytics:
+    build:
+      context: ./services/analytics
+      dockerfile: Dockerfile
+    image: enterprise/analytics:1.0.0
+    container_name: analytics-srv
+    user: "65532:65532"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    environment:
+      - ORDERS_SERVICE_URL=http://orders:8082
+      - PAYMENT_SERVICE_URL=http://payment:8083
+    networks:
+      - frontend-net
+      - analytics-net
+    expose:
+      - "8085"
+    healthcheck:
+      test: ["CMD", "/usr/bin/python3", "server.py", "--health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    image: enterprise/dashboard:1.0.0
+    container_name: dashboard-srv
+    user: "65532:65532"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    environment:
+      - CATALOG_SERVICE_URL=http://catalog:8080
+      - ORDERS_SERVICE_URL=http://orders:8082
+      - ANALYTICS_SERVICE_URL=http://analytics:8085
+    ports:
+      - "8086:8086"
+    networks:
+      - frontend-net
+    healthcheck:
+      test: ["CMD", "php", "index.php", "--health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+    restart: unless-stopped

@@ -1,0 +1,91 @@
+rules:
+  - id: go-ssrf-untrusted-input
+    languages: [go]
+    severity: ERROR
+    message: "Potential SSRF: Direct consumption of untrusted dynamic target inside net/http client without validation."
+    metadata:
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery"
+    patterns:
+      - pattern-either:
+          - pattern: http.Get($URL + ...)
+          - pattern: http.Post($URL + ...)
+          - pattern: http.NewRequest($METHOD, $URL + ..., ...)
+      - pattern-not: http.Get("http://" + ...)
+
+  - id: nodejs-command-injection
+    languages: [javascript]
+    severity: ERROR
+    message: "Critical: Command injection detected via child_process.exec() incorporating dynamic string concatenation."
+    metadata:
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern-either:
+          - pattern: child_process.exec($X + ...)
+          - pattern: child_process.exec(`...${...}...`)
+          - pattern: require('child_process').exec($X + ...)
+
+  - id: dotnet-insecure-deserialization
+    languages: [csharp]
+    severity: ERROR
+    message: "Critical: Unsafe BinaryFormatter deserialization detected. RCE primitive exploitable."
+    metadata:
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+    patterns:
+      - pattern-either:
+          - pattern: new BinaryFormatter().Deserialize(...)
+          - pattern: (BinaryFormatter $BF).Deserialize(...)
+
+  - id: java-command-injection-processbuilder
+    languages: [java]
+    severity: ERROR
+    message: "Critical: Direct OS execution detected inside ProcessBuilder without shell tokenization control."
+    metadata:
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern-either:
+          - pattern: Runtime.getRuntime().exec($CMD + ...)
+          - pattern: new ProcessBuilder("sh", "-c", $CMD + ...)
+
+  - id: ruby-insecure-system-call
+    languages: [ruby]
+    severity: ERROR
+    message: "Critical: Unescaped string interpolation identified in operating system execution call."
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern-either:
+          - pattern: system("...#{$VAR}...")
+          - pattern: Kernel.system("...#{$VAR}...")
+          - pattern: '`...#{$VAR}...`'
+
+  - id: python-unsafe-yaml-load
+    languages: [python]
+    severity: ERROR
+    message: "Security Hazard: Insecure yaml.load() without SafeLoader leads to Arbitrary Code Execution."
+    metadata:
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+    patterns:
+      - pattern-either:
+          - pattern: yaml.load($INPUT, Loader=yaml.Loader)
+          - pattern: yaml.load($INPUT, Loader=yaml.UnsafeLoader)
+          - pattern: yaml.load($INPUT)
+      - pattern-not: yaml.load(..., Loader=yaml.SafeLoader)
+      - pattern-not: yaml.safe_load(...)
+
+  - id: php-remote-code-execution
+    languages: [php]
+    severity: ERROR
+    message: "Catastrophic: Direct dynamic eval invocation detected. Remote Code Execution vector."
+    metadata:
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code"
+      owasp: "A03:2021 - Injection"
+    patterns:
+      - pattern-either:
+          - pattern: eval($INPUT)
+          - pattern: assert($INPUT)

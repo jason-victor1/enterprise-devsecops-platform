@@ -1,0 +1,120 @@
+name: "DevSecOps Phase 2: Static Verification Gates"
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gitleaks:
+    name: "Static Secrets Detection (Gitleaks)"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Checkout full repository history"
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+        with:
+          fetch-depth: 0
+
+      - name: "Run Gitleaks Action"
+        uses: gitleaks/gitleaks-action@f48dfc6d32ffea38a6aef91dd6e61f223f03b221 # v2.3.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  semgrep:
+    name: "SAST Scan (Semgrep Polyglot)"
+    runs-on: ubuntu-22.04
+    container:
+      image: returntocorp/semgrep:1.70.0
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+
+      - name: "Execute Semgrep Engine"
+        run: |
+          semgrep scan \
+            --config .semgrep/rules.yml \
+            --error \
+            --strict \
+            --sarif \
+            --output semgrep-results.sarif \
+            services/
+
+      - name: "Upload Semgrep SARIF"
+        uses: github/codeql-action/upload-sarif@5f5325600e0091514c4c47b337233134e621533b # v3.25.11
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+
+  trivy-sca:
+    name: "SCA & Config Audit (Trivy)"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+
+      - name: "Run Trivy Scanner (Filesystem & Misconfigs)"
+        uses: aquasecurity/trivy-action@d710430a6722f083d3b36b8339fe66b2fc00888a # v0.19.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
+          format: "sarif"
+          output: "trivy-results.sarif"
+          exit-code: "1"
+
+      - name: "Upload Trivy SARIF Report"
+        uses: github/codeql-action/upload-sarif@5f5325600e0091514c4c47b337233134e621533b # v3.25.11
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+  checkov-iac:
+    name: "IaC & Container Posture (Checkov)"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: "Checkout Code"
+        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+
+      - name: "Execute Checkov Scanner"
+        uses: bridgecrewio/checkov-action@14a807f45c22501a2eb443a75871bf232d3023e3 # v12.2806.0
+        with:
+          framework: dockerfile,secrets
+          output_format: cli,sarif
+          output_file_path: console,checkov-results.sarif
+          soft_fail: false
+          quiet: false
+
+      - name: "Upload Checkov SARIF Artifact"
+        uses: github/codeql-action/upload-sarif@5f5325600e0091514c4c47b337233134e621533b # v3.25.11
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+
+  gatekeeper:
+    name: "Security Gates Verification"
+    needs: [gitleaks, semgrep, trivy-sca, checkov-iac]
+    runs-on: ubuntu-22.04
+    if: always()
+    steps:
+      - name: "Evaluate Security Compliance Matrix"
+        run: |
+          if [ "${{ needs.gitleaks.result }}" != "success" ] || \
+             [ "${{ needs.semgrep.result }}" != "success" ] || \
+             [ "${{ needs.trivy-sca.result }}" != "success" ] || \
+             [ "${{ needs.checkov-iac.result }}" != "success" ]; then
+            echo "STATIC VERIFICATION SUITE FAILED: Review the blocked job output above."
+            exit 1
+          fi
+          echo "ALL STATIC SECURITY GATES PASSED: Deployment may proceed."
+          exit 0

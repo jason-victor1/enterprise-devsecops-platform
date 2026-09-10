@@ -1,0 +1,698 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: catalog-sa
+  namespace: production
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inventory-sa
+  namespace: production
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orders-sa
+  namespace: production
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: payment-sa
+  namespace: production
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notification-sa
+  namespace: production
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analytics-sa
+  namespace: production
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dashboard-sa
+  namespace: production
+---
+# ==========================================
+# CATALOG SERVICE (Go / Port 8080)
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: production
+  labels:
+    app: catalog
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: catalog
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  namespace: production
+  labels:
+    app: catalog
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog
+  template:
+    metadata:
+      labels:
+        app: catalog
+    spec:
+      serviceAccountName: catalog-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: catalog
+          image: enterprise/catalog:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8080
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi
+---
+# ==========================================
+# INVENTORY SERVICE (Node.js / Port 8081)
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory
+  namespace: production
+  labels:
+    app: inventory
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8081
+      targetPort: 8081
+      protocol: TCP
+      name: http
+  selector:
+    app: inventory
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory
+  namespace: production
+  labels:
+    app: inventory
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: inventory
+  template:
+    metadata:
+      labels:
+        app: inventory
+    spec:
+      serviceAccountName: inventory-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: inventory
+          image: enterprise/inventory:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8081
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 250m
+              memory: 192Mi
+            requests:
+              cpu: 50m
+              memory: 96Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi
+---
+# ==========================================
+# ORDERS SERVICE (.NET / Port 8082) - VAULT
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  namespace: production
+  labels:
+    app: orders
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8082
+      targetPort: 8082
+      protocol: TCP
+      name: http
+  selector:
+    app: orders
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: production
+  labels:
+    app: orders
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orders
+  template:
+    metadata:
+      labels:
+        app: orders
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "orders-role"
+        vault.hashicorp.com/agent-run-as-user: "65532"
+        vault.hashicorp.com/agent-run-as-group: "65532"
+        vault.hashicorp.com/agent-set-security-context: "true"
+        vault.hashicorp.com/agent-inject-secret-config.json: "secret/data/orders/config"
+        vault.hashicorp.com/agent-inject-template-config.json: |
+          {{- with secret "secret/data/orders/config" -}}
+          {
+            "apiKey": "{{ .Data.data.api_key }}",
+            "catalogAuthToken": "{{ .Data.data.catalog_auth_token }}"
+          }
+          {{- end -}}
+    spec:
+      serviceAccountName: orders-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: orders
+          image: enterprise/orders:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: CATALOG_SERVICE_URL
+              value: "http://catalog.production.svc.cluster.local:8080"
+            - name: INVENTORY_SERVICE_URL
+              value: "http://inventory.production.svc.cluster.local:8081"
+            - name: PAYMENT_SERVICE_URL
+              value: "http://payment.production.svc.cluster.local:8083"
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: DOTNET_EnableDiagnostics
+              value: "0"
+          ports:
+            - containerPort: 8082
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8082
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8082
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 300m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+---
+# ==========================================
+# PAYMENT SERVICE (Java / Port 8083) - VAULT
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment
+  namespace: production
+  labels:
+    app: payment
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8083
+      targetPort: 8083
+      protocol: TCP
+      name: http
+  selector:
+    app: payment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment
+  namespace: production
+  labels:
+    app: payment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payment
+  template:
+    metadata:
+      labels:
+        app: payment
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "payment-role"
+        vault.hashicorp.com/agent-run-as-user: "65532"
+        vault.hashicorp.com/agent-run-as-group: "65532"
+        vault.hashicorp.com/agent-set-security-context: "true"
+        vault.hashicorp.com/agent-inject-secret-credentials.json: "secret/data/payment/credentials"
+        vault.hashicorp.com/agent-inject-template-credentials.json: |
+          {{- with secret "secret/data/payment/credentials" -}}
+          {
+            "merchantId": "{{ .Data.data.merchant_id }}",
+            "encryptionKey": "{{ .Data.data.encryption_key }}"
+          }
+          {{- end -}}
+    spec:
+      serviceAccountName: payment-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: payment
+          image: enterprise/payment:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: NOTIFICATION_SERVICE_URL
+              value: "http://notification.production.svc.cluster.local:8084"
+          ports:
+            - containerPort: 8083
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8083
+            initialDelaySeconds: 8
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8083
+            initialDelaySeconds: 4
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 400m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+---
+# ==========================================
+# NOTIFICATION SERVICE (Ruby / Port 8084)
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification
+  namespace: production
+  labels:
+    app: notification
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8084
+      targetPort: 8084
+      protocol: TCP
+      name: http
+  selector:
+    app: notification
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification
+  namespace: production
+  labels:
+    app: notification
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notification
+  template:
+    metadata:
+      labels:
+        app: notification
+    spec:
+      serviceAccountName: notification-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: notification
+          image: enterprise/notification:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8084
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8084
+            initialDelaySeconds: 4
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8084
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi
+---
+# ==========================================
+# ANALYTICS SERVICE (Python / Port 8085)
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics
+  namespace: production
+  labels:
+    app: analytics
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8085
+      targetPort: 8085
+      protocol: TCP
+      name: http
+  selector:
+    app: analytics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics
+  namespace: production
+  labels:
+    app: analytics
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: analytics
+  template:
+    metadata:
+      labels:
+        app: analytics
+    spec:
+      serviceAccountName: analytics-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: analytics
+          image: enterprise/analytics:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: ORDERS_SERVICE_URL
+              value: "http://orders.production.svc.cluster.local:8082"
+            - name: PAYMENT_SERVICE_URL
+              value: "http://payment.production.svc.cluster.local:8083"
+          ports:
+            - containerPort: 8085
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8085
+            initialDelaySeconds: 4
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8085
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 250m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi
+---
+# ==========================================
+# DASHBOARD SERVICE (PHP / Port 8086)
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  namespace: production
+  labels:
+    app: dashboard
+spec:
+  type: NodePort
+  ports:
+    - port: 8086
+      targetPort: 8086
+      nodePort: 30086
+      protocol: TCP
+      name: http
+  selector:
+    app: dashboard
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: production
+  labels:
+    app: dashboard
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      serviceAccountName: dashboard-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: dashboard
+          image: enterprise/dashboard:1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: CATALOG_SERVICE_URL
+              value: "http://catalog.production.svc.cluster.local:8080"
+            - name: ORDERS_SERVICE_URL
+              value: "http://orders.production.svc.cluster.local:8082"
+            - name: ANALYTICS_SERVICE_URL
+              value: "http://analytics.production.svc.cluster.local:8085"
+          ports:
+            - containerPort: 8086
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8086
+            initialDelaySeconds: 4
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8086
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            limits:
+              cpu: 300m
+              memory: 192Mi
+            requests:
+              cpu: 50m
+              memory: 96Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi
