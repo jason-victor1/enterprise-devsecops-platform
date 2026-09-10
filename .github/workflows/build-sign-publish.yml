@@ -3,6 +3,7 @@ name: "DevSecOps Phase 3: Build, Sign, and Publish Artifacts"
 on:
   push:
     branches: ["main"]
+    tags: ["v*"]
 
 permissions:
   contents: read
@@ -37,19 +38,19 @@ jobs:
             path: services/dashboard
     steps:
       - name: "Checkout Repository"
-        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+        uses: actions/checkout@v4
 
       - name: "Install Cosign CLI"
-        uses: sigstore/cosign-installer@4959ce089c160999a6aff320ec94d50690157976 # v3.8.1
+        uses: sigstore/cosign-installer@v3
 
       - name: "Install Syft CLI"
-        uses: anchore/sbom-action/download-syft@f325610c99d672d45b50029d519ff7e6085d3279 # v0.15.11
+        uses: anchore/sbom-action/download-syft@v0
 
       - name: "Set up Docker Buildx"
-        uses: docker/setup-buildx-action@988b5a0280414f521da01fbcc24ea419b643c9de # v3.2.0
+        uses: docker/setup-buildx-action@v3
 
       - name: "Authenticate to GitHub Container Registry (GHCR)"
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -65,7 +66,7 @@ jobs:
 
       - name: "Build and Push Hardened Container Image"
         id: build-push
-        uses: docker/build-push-action@2eb120fa8221804b4d63be5f5f745a3068e3d23e # v6.0.0
+        uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.service.path }}
           file: ${{ matrix.service.path }}/Dockerfile

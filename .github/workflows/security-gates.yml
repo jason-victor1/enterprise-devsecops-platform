@@ -20,12 +20,12 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "Checkout full repository history"
-        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: "Run Gitleaks Action"
-        uses: gitleaks/gitleaks-action@f48dfc6d32ffea38a6aef91dd6e61f223f03b221 # v2.3.4
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
@@ -37,7 +37,7 @@ jobs:
       image: returntocorp/semgrep:1.70.0
     steps:
       - name: "Checkout Code"
-        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+        uses: actions/checkout@v4
 
       - name: "Execute Semgrep Engine"
         run: |
@@ -50,7 +50,7 @@ jobs:
             services/
 
       - name: "Upload Semgrep SARIF"
-        uses: github/codeql-action/upload-sarif@5f5325600e0091514c4c47b337233134e621533b # v3.25.11
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: semgrep-results.sarif
@@ -60,10 +60,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "Checkout Code"
-        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+        uses: actions/checkout@v4
 
       - name: "Run Trivy Scanner (Filesystem & Misconfigs)"
-        uses: aquasecurity/trivy-action@d710430a6722f083d3b36b8339fe66b2fc00888a # v0.19.0
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
           scan-ref: "."
@@ -74,7 +74,7 @@ jobs:
           exit-code: "1"
 
       - name: "Upload Trivy SARIF Report"
-        uses: github/codeql-action/upload-sarif@5f5325600e0091514c4c47b337233134e621533b # v3.25.11
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: trivy-results.sarif
@@ -84,10 +84,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: "Checkout Code"
-        uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+        uses: actions/checkout@v4
 
       - name: "Execute Checkov Scanner"
-        uses: bridgecrewio/checkov-action@14a807f45c22501a2eb443a75871bf232d3023e3 # v12.2806.0
+        uses: bridgecrewio/checkov-action@master
         with:
           framework: dockerfile,secrets
           output_format: cli,sarif
@@ -96,7 +96,7 @@ jobs:
           quiet: false
 
       - name: "Upload Checkov SARIF Artifact"
-        uses: github/codeql-action/upload-sarif@5f5325600e0091514c4c47b337233134e621533b # v3.25.11
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: checkov-results.sarif
