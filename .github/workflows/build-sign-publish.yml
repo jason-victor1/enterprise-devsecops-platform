@@ -72,7 +72,7 @@ jobs:
 
       - name: "Build and Push Hardened Container Image"
         id: build-push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.service.path }}
           file: ${{ matrix.service.path }}/Dockerfile
