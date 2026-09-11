@@ -1,6 +1,7 @@
 name: "DevSecOps Phase 3: Build, Sign, and Publish Artifacts"
 
 on:
+  workflow_dispatch:
   push:
     branches: ["main"]
     paths-ignore:

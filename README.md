@@ -1,7 +1,7 @@
 # Enterprise Polyglot DevSecOps Reference Platform
 
-[![DevSecOps Phase 2: Static Verification Gates](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/security-gates.yml/badge.svg?branch=main)
-[![DevSecOps Phase 3: Build, Sign, and Publish Artifacts](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/build-sign-publish.yml/badge.svg?branch=main)
+[![DevSecOps Phase 2: Static Verification Gates](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/security-gates.yml/badge.svg?branch=main)](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/security-gates.yml)
+[![DevSecOps Phase 3: Build, Sign, and Publish Artifacts](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/build-sign-publish.yml/badge.svg?branch=main)](https://github.com/jason-victor1/enterprise-devsecops-platform/actions/workflows/build-sign-publish.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Template: GitHub](https://img.shields.io/badge/Template-GitHub%20Template-success.svg)](https://github.com/jason-victor1/enterprise-devsecops-platform)
 
