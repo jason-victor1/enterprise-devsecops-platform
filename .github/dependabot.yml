@@ -4,28 +4,39 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
 
-  - package-ecosystem: "gomod"
-    directory: "/services/catalog"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-
-  - package-ecosystem: "pip"
+  - package-ecosystem: "docker"
     directory: "/services/analytics"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
 
-  - package-ecosystem: "npm"
+  - package-ecosystem: "docker"
+    directory: "/services/catalog"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/services/dashboard"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
     directory: "/services/inventory"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
 
-  - package-ecosystem: "nuget"
+  - package-ecosystem: "docker"
+    directory: "/services/notification"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
     directory: "/services/orders"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+
+  - package-ecosystem: "docker"
+    directory: "/services/payment"
+    schedule:
+      interval: "weekly"

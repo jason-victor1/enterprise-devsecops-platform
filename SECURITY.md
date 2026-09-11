@@ -2,22 +2,19 @@
 
 ## Supported Versions
 
-The zero-trust reference architecture maintains active security patches on the following branch targets:
+The following versions of the Enterprise DevSecOps Platform currently receive security patches:
 
 | Version | Supported          |
-| :------ | :----------------- |
-| `main`  | :white_check_mark: |
+| ------- | ------------------ |
+| 1.0.x   | :white_check_mark: |
+| < 1.0   | :x:                |
 
 ## Reporting a Vulnerability
 
-Security vulnerabilities should be reported privately to prevent premature disclosure of exploit vectors:
+We take the security of our platform and runtime control plane seriously. If you discover a security vulnerability:
 
-1. Navigate to the repository's **Security** tab on GitHub.
-2. Select **Advisories** and click **Report a vulnerability**.
-3. Include reproduction steps, proof-of-concept manifests, and impacted components.
+1. **Do not create a public GitHub issue.**
+2. Submit findings through GitHub Private Vulnerability Reporting via the **Security** tab.
+3. Provide reproduction steps, attack surface vectors, and proof-of-concept payloads where applicable.
 
-### Response SLA & Disclosure Timeline
-
-* **Acknowledgment**: Within 24 hours of report receipt.
-* **Triage & Remediation Assessment**: Within 72 hours.
-* **Coordinated Disclosure**: Fixes will be committed and released alongside a GitHub Security Advisory within 30 days of validation.
+All reports receive initial triage within 48 hours and remediation SLA tracking based on CVSS scoring.
