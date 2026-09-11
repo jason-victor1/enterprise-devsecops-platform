@@ -7,6 +7,8 @@
 
 A production-grade, zero-trust reference architecture demonstrating defense-in-depth across 7 polyglot microservices (Go, Python, Node.js, Ruby, Java, C#, PHP).
 
+> 📋 **Architecture Overview:** Review the complete [Executive Architecture Summary](docs/architecture-summary.md) and cryptographic [Verification Evidence](docs/verification-evidence.md).
+
 ```mermaid
 flowchart TD
     subgraph TrackA["Track A: CI/CD Build & Supply Chain Gates"]
