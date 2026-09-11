@@ -27,6 +27,8 @@ keywords = ["postgres://", "mysql://", "mongodb://", "redis://"]
 [allowlist]
 description = "Global exception allowlist for development fixtures"
 paths = [
+  '''tests/.*''',
+  '''docs/.*''',
   '''\.gitleaks\.toml$''',
   '''\.git/''',
   '''\.md$''',
